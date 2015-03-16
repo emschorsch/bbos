@@ -6,6 +6,7 @@ from bbos.db.db import SQLException
 class mySQLConnectionFTest(FTest):
     
     def setUp(self):
+        print "test"
         self.db = DB();
         
     def testLoad_SQLError(self):

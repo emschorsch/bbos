@@ -12,11 +12,11 @@ class BBOSConfig:
     dbHost = 'localhost'
     dbPort = 3306
     dbName = 'gameday'
-    mySQLLocation = 'C:\\Program Files\\MySQL\\MySQL Server 5.5\\bin'
+    mySQLLocation = '/usr/local/mysql/bin/mysql'
     numberOfThreads = 6
     
     #logging
-    logLocation = 'c:\\temp'
+    logLocation = 'logs'
     logScreenPrintingLogLevel = logging.INFO  
     
     #file compression

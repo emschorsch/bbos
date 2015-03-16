@@ -24,6 +24,9 @@ class InningParser(Parser):
         self.game.setRunners(self.runners)
     
     def __parse__(self, inningXML):
+        #import rpdb
+        #rpdb.set_trace()
+
         doc = self.createDocument(inningXML)
         if doc == None: return
         
@@ -93,10 +96,12 @@ class InningParser(Parser):
                 return actionOrAtBat
               
     def __parseAtbatTag__(self, tag):
+        #Gets the atbat data for this batter
         self.__storeAtbatTag__(tag)
         
         pitchTags = self.__getPitchTagsForAtbatTag__(tag)
         
+        #Gets all the pitches for this PA
         for pitchTag in pitchTags:
             self.__storePitchTag__(pitchTag)
             
@@ -112,6 +117,9 @@ class InningParser(Parser):
     
     def __storeAtbatTag__(self, tag):
         atbat = self.mapTagWithList(tag, GamedayConfig.parser_inning_atbat)
+
+        #import pdb
+        #pdb.set_trace()
         
         """<atbat num="54" b="4" s="0" o="0" 
         batter="112736" stand="L" b_height="6-0" pitcher="429714" 
@@ -132,8 +140,10 @@ class InningParser(Parser):
         if 'batter' in atbat and atbat['batter'] == 'null':
             del(atbat['batter'])
         
-        atbat['des'] = unicodedata.normalize('NFKD', atbat['des']).encode('latin-1', 'ignore')
-        atbat['des_es'] = unicodedata.normalize('NFKD', atbat['des_es']).encode('latin-1', 'ignore')
+        if 'des' in atbat:
+            atbat['des'] = unicodedata.normalize('NFKD', atbat['des']).encode('ascii', 'ignore')
+        if 'des_es' in atbat:    
+            atbat['des_es'] = unicodedata.normalize('NFKD', atbat['des_es']).encode('ascii', 'ignore')
                 
         self.atbats.append(atbat)   
     
@@ -156,6 +166,8 @@ class InningParser(Parser):
         
         atbatID = tag.parentNode.getAttribute('num')
         pitch['gameAtBatID'] = atbatID
+        pitch['batter'] = tag.parentNode.getAttribute('batter')
+        pitch['pitcher'] = tag.parentNode.getAttribute('pitcher')
         pitchTime = tag.getAttribute('sv_id')
         if pitchTime:
             pitch['sv_id'] = self.__getPitchTime__(pitchTime)
@@ -169,11 +181,12 @@ class InningParser(Parser):
         if 'y' in pitch and pitch['y'] == "":
             del(pitch['y'])
 
+        #No reason to encode this. Should keep this in unicode: https://www.youtube.com/watch?v=sgHbC6udIqc
         if 'cc' in pitch:
-            pitch['cc'] = unicodedata.normalize('NFKD', pitch['cc']).encode('latin-1', 'ignore')
+            pitch['cc'] = unicodedata.normalize('NFKD', pitch['cc']).encode('ascii', 'ignore')
             
         if 'mt' in pitch:
-            pitch['mt'] = unicodedata.normalize('NFKD', pitch['mt']).encode('latin-1', 'ignore')
+            pitch['mt'] = unicodedata.normalize('NFKD', pitch['mt']).encode('ascii', 'ignore')
             
         self.pitches.append(pitch)
     

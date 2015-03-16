@@ -24,6 +24,7 @@ class WorkerThread(threading.Thread):
                 
             self.worker.consume(item)
             
+            #print "task done"
             self.queue.task_done()   
     
 def threadThis(numberOfThreads, workList, workerFactory):

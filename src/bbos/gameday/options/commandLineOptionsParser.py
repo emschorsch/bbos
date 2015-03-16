@@ -11,6 +11,9 @@ def parseOptions():
     optionParser.add_option('-r', '--recent', action="store_false", help="""loads recent games (days back defined in gamedayConfig.py)""")
     
     (options, args) = optionParser.parse_args()
+
+    #import pdb
+    #pdb.set_trace()
     
     setLeagueIfPassedIn(options, args)
     
