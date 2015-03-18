@@ -103,6 +103,12 @@ class Fetcher(threading.Thread):
             
                 unzipper = Unzipper(BBOSConfig.unzipController)
                 unzipper.unzip(f, self.path)
+
+                #Uncomment the debug statement below and modify 2013MIN.eva
+                #Line 5899 should be: play,7,1,willj004,01,..FX,DGR/78/L.2-H;1-3
+                #Then continue execution
+                import pdb
+                pdb.set_trace()
                 #zip = zipfile.ZipFile(f, "r")
                 #zip.extractall(self.path)
 
