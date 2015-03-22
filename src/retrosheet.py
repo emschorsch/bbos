@@ -233,9 +233,9 @@ eventCSVFiles = findFiles("events-*.csv")
 for fileName in eventCSVFiles:
     logging.info("processing %s" % fileName)
     reader = csv.reader(open(fileName))
-    headers = reader.next()
+    headers = ["YEAR_ID"] + reader.next()
     for row in reader:
-        sql = 'INSERT INTO events(%s) VALUES(%s)' % (','.join(headers), ','.join(['%s'] * len(headers)))
+        sql = 'INSERT INTO events(%s) VALUES(%s, %s)' % (','.join(headers), int(year), ','.join(['%s'] * (len(headers)-1)))
         try:
             conn.execute(sql, row)
         except:
@@ -246,9 +246,9 @@ gameCSVFiles = findFiles("games-*.csv")
 for fileName in gameCSVFiles:
     logging.info("processing %s" % fileName)
     reader = csv.reader(open(fileName))
-    headers = reader.next()
+    headers = ["YEAR_ID"] + reader.next()
     for row in reader:
-        sql = 'INSERT INTO games(%s) VALUES(%s)' % (','.join(headers), ','.join(['%s'] * len(headers)))
+        sql = 'INSERT INTO games(%s) VALUES(%s, %s)' % (','.join(headers), int(year), ','.join(['%s'] * (len(headers)-1)))
         try:
             conn.execute(sql, row)
         except:
