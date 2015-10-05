@@ -74,6 +74,8 @@ CREATE TABLE pitches (
   `gameAtBatID`     smallint(2) UNSIGNED DEFAULT NULL,
   `id`              mediumint(9) UNSIGNED,
   gamedayPitchID    int(8) UNSIGNED DEFAULT NULL AUTO_INCREMENT,
+  pitcher           mediumint(6) UNSIGNED DEFAULT NULL,
+  batter            mediumint(6) UNSIGNED DEFAULT NULL,
   `des`             VARCHAR(50) DEFAULT NULL,
   `type`            varchar(1) DEFAULT NULL,
   `x`               VARCHAR(25),
