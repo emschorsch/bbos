@@ -17,7 +17,7 @@ import logging
 from bbos.config import loggingSetup
 from bbos.retrosheet.options import commandLineOptionsParser
 loggingSetup.initializeLogging("bbosRetrosheet.py")
-    
+
 logging.info("Starting bbosRetrosheet!")
 
 THREADS = 20
@@ -25,7 +25,7 @@ RETROSHEET_URL = BBOSConfig.retrosheetURL
 CHADWICK = os.path.abspath(BBOSConfig.pathToChadwick)
 ENGINE = BBOSConfig.sqlAlchemyEngine
 HOST = BBOSConfig.sqlAlchemyHost
-DATABASE = BBOSConfig.sqlAlchemyDatabase   
+DATABASE = BBOSConfig.sqlAlchemyDatabase
 USER = None if not BBOSConfig.sqlAlchemyUser else BBOSConfig.sqlAlchemyUser
 SCHEMA = None if not BBOSConfig.sqlAlchemySchema else BBOSConfig.sqlAlchemySchema
 PASSWORD = None if not BBOSConfig.sqlAlchemyPassword else BBOSConfig.sqlAlchemyPassword
@@ -89,18 +89,18 @@ class Fetcher(threading.Thread):
             fill = "%s"+os.sep+"%s"
             f = fill % (self.path, os.path.basename(url))
             logging.info("retrieving:"+url+" to:"+f)
-            
+
             try:
                 urllib2.urlopen(url)
             except urllib2.HTTPError:
                 logging.info("did not exist:"+url)
                 continue
-            
+
             urllib.urlretrieve(url, f)
-            
+
             if (f[-3:] == "zip"):
                 logging.info("unzipping:"+f+" to:"+self.path)
-            
+
                 unzipper = Unzipper(BBOSConfig.unzipController)
                 unzipper.unzip(f, self.path)
                 #zip = zipfile.ZipFile(f, "r")
@@ -112,7 +112,7 @@ def findFiles(pattern):
     logging.info("finding:"+pattern)
     results = glob.glob(pattern)
     return results
-    
+
 start = time.time()
 path = tempfile.mkdtemp()
 os.chdir(path)
