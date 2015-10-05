@@ -6,8 +6,10 @@ import json
 class FeedParser(Parser):
 
     def parse(self, xmlProvider):
-        gamePK = self.game.getGameInfo()['game_pk']
-        if gamePK is None:
+        try:
+            gamePK = self.game.getGameInfo()['game_pk']
+        except KeyError:
+            # Old game
             return
 
         jsonContent = xmlProvider.getFeedJSON(gamePK)
