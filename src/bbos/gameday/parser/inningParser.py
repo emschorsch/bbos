@@ -164,6 +164,8 @@ class InningParser(Parser):
 
         atbatID = tag.parentNode.getAttribute('num')
         pitch['gameAtBatID'] = atbatID
+        pitch['batter'] = tag.parentNode.getAttribute('batter')
+        pitch['pitcher'] = tag.parentNode.getAttribute('pitcher')
         pitchTime = tag.getAttribute('sv_id')
         if pitchTime:
             pitch['sv_id'] = self.__getPitchTime__(pitchTime)
@@ -177,6 +179,7 @@ class InningParser(Parser):
         if 'y' in pitch and pitch['y'] == "":
             del(pitch['y'])
 
+        # No reason to encode this. Should keep this in unicode: https://www.youtube.com/watch?v=sgHbC6udIqc
         if 'cc' in pitch:
             pitch['cc'] = unicodedata.normalize('NFKD', pitch['cc']).encode('ascii', 'ignore')
 

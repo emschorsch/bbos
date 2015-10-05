@@ -26,7 +26,7 @@ def main():
         if options.game:
             gamedayGameURLs = gamedayDirectory.getGameURLsForGame(options.game)
         elif options.day:
-            gamedayGameURLs = gamedayDirectory.getGameURLsForDay(eval(options.day))
+            gamedayGameURLs = gamedayDirectory.getGameURLsForDay(options.day.split("/"))
         elif options.year:
             gamedayGameURLs = gamedayDirectory.getGameURLsForYear(options.year)
         elif options.recent:

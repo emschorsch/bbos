@@ -59,16 +59,16 @@ class Parser(threading.Thread):
             try: year = self.queue.get_nowait()
             except Queue.Empty: break;
 
-            fill = "%s"+os.sep+"cwevent -q -n -f 0-96 -x 0-62 -y %d %d*.EV* > events-%d.csv"
-            cmd = fill % (CHADWICK, year, year, year)
+            fill = "cwevent -q -n -f 0-96 -x 0-62 -y %d %d*.EV* > events-%d.csv"
+            cmd = fill % (year, year, year)
             logging.info("running:"+cmd)
             subprocess.call(cmd, shell=True)
-            fill = "%s"+os.sep+"cwgame -q -n -f 0-83 -y %d %d*.EV* > games-%d.csv"
-            cmd = fill % (CHADWICK, year, year, year)
+            fill = "cwgame -q -n -f 0-83 -y %d %d*.EV* > games-%d.csv"
+            cmd = fill % (year, year, year)
             logging.info("running:"+cmd)
             subprocess.call(cmd, shell=True)
-            fill = "%s"+os.sep+"cwcomment -q -f 0-2 -y %d %d*.EV* > comment-%d.csv"
-            cmd = fill % (CHADWICK, year, year, year)
+            fill = "cwcomment -q -f 0-2 -y %d %d*.EV* > comment-%d.csv"
+            cmd = fill % (year, year, year)
             logging.info("running:"+cmd)
             subprocess.call(cmd, shell=True)
 
@@ -103,6 +103,10 @@ class Fetcher(threading.Thread):
 
                 unzipper = Unzipper(BBOSConfig.unzipController)
                 unzipper.unzip(f, self.path)
+                #Uncomment the debug statement below and modify 2013MIN.eva
+                 #Line 5899 should be: play,7,1,willj004,01,..FX,DGR/78/L.2-H;1-3
+                 #Then continue execution
+                #import ipdb; ipdb.set_trace()
                 #zip = zipfile.ZipFile(f, "r")
                 #zip.extractall(self.path)
 
@@ -192,9 +196,14 @@ for fileName in rosterFiles:
             for i in range (9 - len(info)): info.append(None)
 
         sql = "INSERT INTO rosters VALUES (%s)" % ", ".join(["%s"] * len(info))
-        logging.debug(sql)
-        logging.debug(info)
-        conn.execute(sql, info)
+        try:
+            conn.execute(sql, info)
+        except sqlalchemy.exc.IntegrityError, err:
+            logging.debug(err)
+        except Exception, err:
+            logging.debug(sql)
+            logging.debug(err)
+            logging.debug("info: " + str(info))
 
 logging.info("processing teams...")
 teamFiles = findFiles("TEAM*")
@@ -214,32 +223,48 @@ for fileName in teamFiles:
         if len(info) < 5: continue
 
         sql = "INSERT INTO teams VALUES (%s)" % ", ".join(["%s"] * len(info))
-        logging.debug(sql)
-        logging.debug(info)
-        conn.execute(sql, info)
+        try:
+            conn.execute(sql, info)
+        except sqlalchemy.exc.IntegrityError, err:
+            logging.debug(err)
+        except:
+            logging.debug(sql)
+            logging.debug(info)
 
 
 eventCSVFiles = findFiles("events-*.csv")
 for fileName in eventCSVFiles:
     logging.info("processing %s" % fileName)
     reader = csv.reader(open(fileName))
-    headers = reader.next()
+    headers = ["YEAR_ID"] + reader.next()
     for row in reader:
-        sql = 'INSERT INTO events(%s) VALUES(%s)' % (','.join(headers), ','.join(['%s'] * len(headers)))
-        logging.debug(sql)
-        logging.debug(row)
-        conn.execute(sql, row)
+        sql = 'INSERT INTO events(%s) VALUES(%s, %s)' % (','.join(headers), int(year), ','.join(['%s'] * (len(headers)-1)))
+        try:
+            conn.execute(sql, row)
+        except sqlalchemy.exc.IntegrityError, err:
+            logging.debug(err)
+        except Exception, err:
+            import ipdb; ipdb.set_trace()  # XXX BREAKPOINT
+            logging.debug(sql)
+            logging.debug(err)
+            logging.debug("info: " + str(row))
 
 gameCSVFiles = findFiles("games-*.csv")
 for fileName in gameCSVFiles:
     logging.info("processing %s" % fileName)
     reader = csv.reader(open(fileName))
-    headers = reader.next()
+    headers = ["YEAR_ID"] + reader.next()
     for row in reader:
-        sql = 'INSERT INTO games(%s) VALUES(%s)' % (','.join(headers), ','.join(['%s'] * len(headers)))
-        logging.debug(sql)
-        logging.debug(row)
-        conn.execute(sql, row)
+        sql = 'INSERT INTO games(%s) VALUES(%s, %s)' % (','.join(headers), int(year), ','.join(['%s'] * (len(headers)-1)))
+        try:
+            conn.execute(sql, row)
+        except sqlalchemy.exc.IntegrityError, err:
+            logging.debug(err)
+            # print("Duplicate key:", err)
+        except Exception, err:
+            logging.debug(sql)
+            logging.debug(err)
+            logging.debug("info: " + str(row))
 
 commentCSVFiles = findFiles("comment-*.csv")
 for fileName in commentCSVFiles:
@@ -248,9 +273,13 @@ for fileName in commentCSVFiles:
     headers = ["GAME_ID", "EVENT_ID", "COMMENT_TEXT"]
     for row in reader:
         sql = 'INSERT INTO comments(%s) VALUES(%s)' % (','.join(headers), ','.join(['%s'] * len(headers)))
-        logging.debug(sql)
-        logging.debug(row)
-        conn.execute(sql, row)
+        try:
+            conn.execute(sql, row)
+        except sqlalchemy.exc.IntegrityError, err:
+            logging.debug(err)
+        except:
+            logging.debug(sql)
+            logging.debug(row)
 
 # cleanup!
 #for fileName in glob.glob("*"): os.remove(fileName)
