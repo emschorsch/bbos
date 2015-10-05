@@ -1,5 +1,6 @@
 from www.page import Page
 import re
+from bbos.config.bbosConfig import BBOSConfig
 
 class GamedayXMLProvider:
     def __init__(self, url):
@@ -154,3 +155,17 @@ class GamedayXMLProvider:
         
         return xml  
     
+    def getPregumboJSON(self):
+        pregumboJSONURL = self.url + "/pregumbo.json"
+
+        pregumboJSON = Page(pregumboJSONURL).getContent()
+        
+        return pregumboJSON
+    
+    def getFeedJSON(self, gameIDNumber):
+        #http://statsapi.mlb.com/api/v1/game/413965/feed/color
+        jsonURL = BBOSConfig.statsapiURL + str(gameIDNumber) + "/feed/color"
+
+        jsonContent = Page(jsonURL).getContent()
+        
+        return jsonContent

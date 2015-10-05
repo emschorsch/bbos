@@ -89,15 +89,11 @@ class GamedayDirectoryStructure:
             dayURLs.extend(dayURLsForMonth)
             
         gameURLs = []
-
-        print "Beginning to collect the urls for the",len(dayURLs),"days"
         
         for dayURL in dayURLs:
             gameURLsForDay = self.__getGameURLsForDay__(dayURL)
             
             gameURLs.extend(gameURLsForDay)
-
-        print "Finished collecting all the urls to scrape"
             
         return gameURLs
             

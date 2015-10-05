@@ -28,15 +28,16 @@ class PlayerBioParser(Parser):
     def __parsePlayerTag__(self, playerTag):
         playerBio = self.mapTagWithList(playerTag, GamedayConfig.parser_playerbio_player)
         
-        playerHasHeight = ('height' in playerBio) and (len(playerBio['height']) != 0)
-        playerHeightNotNull = "null" != playerBio['height']
+        if 'height' in playerBio.keys():
+            playerHasHeight = ('height' in playerBio) and (len(playerBio['height']) != 0)
+            playerHeightNotNull = "null" != playerBio['height']
         
-        if playerHasHeight and playerHeightNotNull:
-            (feet, inches) = playerBio['height'].split('-')
-            playerBio['heightFeet'] = feet
-            playerBio['heightInches'] = inches
+            if playerHasHeight and playerHeightNotNull:
+                (feet, inches) = playerBio['height'].split('-')
+                playerBio['heightFeet'] = feet
+                playerBio['heightInches'] = inches
             
-        del playerBio['height']                
+            del playerBio['height']                
             
         self.playerBios.append(playerBio)
             

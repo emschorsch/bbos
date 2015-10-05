@@ -10,6 +10,8 @@ class Game:
         self.pitchers = []
         self.teamNames = []
         self.hits = []
+        self.pregumboHits = []
+        self.feedPlays = []
         self.players = []
         self.playerBios = []
         self.runners = []
@@ -74,6 +76,12 @@ class Game:
     def setHits(self, hits):
         self.hits = hits
     
+    def setPregumboHits(self, pregumboHits):
+        self.pregumboHits = pregumboHits
+    
+    def setFeedPlays(self, feedPlays):
+        self.feedPlays = feedPlays
+    
     def setAtbats(self, atbats):
         self.atbats = atbats
     
@@ -100,6 +108,12 @@ class Game:
         
     def getHits(self):
         return self.hits
+    
+    def getPregumboHits(self):
+        return self.pregumboHits
+    
+    def getFeedPlays(self):
+        return self.feedPlays
     
     def getAtbats(self):
         return self.atbats

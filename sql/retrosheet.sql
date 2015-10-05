@@ -4,8 +4,7 @@ DROP DATABASE IF EXISTS `retrosheet`;
 use retrosheet; 
 
 CREATE TABLE events (
-YEAR_ID INTEGER
-,GAME_ID varchar(12)
+GAME_ID varchar(12)
 ,AWAY_TEAM_ID varchar(3)
 ,INN_CT varchar(2)
 ,BAT_HOME_ID varchar(10)
@@ -171,8 +170,7 @@ YEAR_ID INTEGER
 ;
 
 CREATE TABLE retrosheet.games (
-YEAR_ID INTEGER
-,GAME_ID varchar(12) PRIMARY KEY
+GAME_ID varchar(12) PRIMARY KEY
 ,GAME_DT INTEGER
 ,GAME_CT INTEGER
 ,GAME_DY varchar(9)

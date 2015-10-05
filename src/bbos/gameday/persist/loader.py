@@ -56,7 +56,8 @@ class Loader:
         statement = statement + ') VALUES ("' + self.gameName + '"'
         
         for field in do.keys():
-            statement = statement + ', "' + unicode(do[field]) + '"'
+            statement = statement + ', "' + str(do[field]) + '"'
+        
         statement = statement + ');'
         
         return statement
@@ -74,4 +75,3 @@ class Loader:
         statement = statement % (self.getTableName(), self.gameName)
         
         self.db.execute(statement)
-

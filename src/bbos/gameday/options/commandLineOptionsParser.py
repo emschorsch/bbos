@@ -11,24 +11,11 @@ def parseOptions():
     optionParser.add_option('-r', '--recent', action="store_false", help="""loads recent games (days back defined in gamedayConfig.py)""")
     
     (options, args) = optionParser.parse_args()
-
-    #import pdb
-    #pdb.set_trace()
     
     setLeagueIfPassedIn(options, args)
     
     return options
 
-def parseDeleteOptions():
-    optionParser = OptionParser("")
-    
-    optionParser.add_option('-g', '--game', dest='game', help='the gameday game name to load', metavar='GAME')
-    
-    (options, args) = optionParser.parse_args()
-    
-    setLeagueIfPassedIn(options, args)
-    
-    return options
 def createHelpText():
     usage = """Welcome to BBOS - Baseball on a Stick
     

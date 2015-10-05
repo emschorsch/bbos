@@ -14,7 +14,6 @@ CREATE TABLE  action (
     `o`           	TINYINT(3) UNSIGNED DEFAULT NULL,
     score         	VARCHAR(2),
     des           	VARCHAR(512),
-    des_es         	VARCHAR(512),
     event         	VARCHAR(60),
     `event2`      	varchar(40) DEFAULT NULL,
     `event3`      	varchar(40) DEFAULT NULL,
@@ -53,7 +52,6 @@ CREATE TABLE atbats (
   `batter`      MEDIUMINT(6) UNSIGNED,
   `pitcher`     MEDIUMINT(6) UNSIGNED,
   `des`         VARCHAR(512) DEFAULT NULL,
-  `des_es`      VARCHAR(512) DEFAULT NULL,
   `stand`       CHAR(1) DEFAULT NULL,
   `score`       varchar(2) DEFAULT NULL,
   `away_team_runs` int(3) unsigned DEFAULT NULL,
@@ -77,10 +75,9 @@ CREATE TABLE pitches (
   `id`              mediumint(9) UNSIGNED,
   gamedayPitchID    int(8) UNSIGNED DEFAULT NULL AUTO_INCREMENT,
   `des`             VARCHAR(50) DEFAULT NULL,
-  `des_es`             VARCHAR(70) DEFAULT NULL,
   `type`            varchar(1) DEFAULT NULL,
-  `x`               VARCHAR(7),
-  `y`               VARCHAR(7),
+  `x`               VARCHAR(25),
+  `y`               VARCHAR(25),
   `start_speed`     DECIMAL(6,3) UNSIGNED DEFAULT NULL,
   `end_speed`       DECIMAL(6,3) UNSIGNED DEFAULT NULL,
   `sz_top`          DECIMAL(6,3) UNSIGNED DEFAULT NULL,
@@ -117,6 +114,7 @@ CREATE TABLE pitches (
   `on_3b` int(6) unsigned DEFAULT NULL,
   `tfs`             VARCHAR(10) DEFAULT NULL,
   `tfs_zulu`             VARCHAR(25) DEFAULT NULL,
+  `play_guid`       VARCHAR(50) DEFAULT NULL,
   PRIMARY KEY  (gamedayPitchID)
 ) ENGINE=InnoDB AUTO_INCREMENT=1315461 DEFAULT CHARSET=latin1;
 
@@ -133,9 +131,9 @@ CREATE TABLE Teams (
       id                VARCHAR(8) DEFAULT NULL,
       file              varchar(8) DEFAULT NULL,
       name              VARCHAR(40) DEFAULT NULL,
-      league            VARCHAR(3) DEFAULT NULL,
-      league_id         VARCHAR(3),
-      division_id       VARCHAR(3),
+      league            VARCHAR(5) DEFAULT NULL,
+      league_id         VARCHAR(5),
+      division_id       VARCHAR(5),
       type              VARCHAR(5) DEFAULT NULL,
       w                 int(3) DEFAULT NULL,
       l                 int(3) DEFAULT NULL
@@ -204,7 +202,7 @@ DROP TABLE IF EXISTS coaches;
 CREATE TABLE coaches (
   gameName          varchar(38) DEFAULT NULL,
   id                int(6) UNSIGNED DEFAULT NULL,
-  num               varchar(2) DEFAULT NULL,
+  num               varchar(4) DEFAULT NULL,
   team              varchar(15) DEFAULT NULL,
   homeAway          varchar(4) DEFAULT NULL,
   first             VARCHAR(50) DEFAULT NULL,
@@ -422,7 +420,27 @@ CREATE TABLE gameDetail (
 );      
         
         
+DROP TABLE IF EXISTS pregumboHits;
+CREATE TABLE pregumboHits (
+  gameName          VARCHAR(38) NOT NULL,
+  angle          DECIMAL(6,3) NOT NULL,
+  direction          DECIMAL(6,3) NOT NULL,
+  distance          DECIMAL(6,3) NOT NULL,
+  play_guid	    VARCHAR(50),
+  speed          DECIMAL(6,3) NOT NULL,
+  PRIMARY KEY  (play_guid)
+) ENGINE=InnoDB AUTO_INCREMENT=1315461 DEFAULT CHARSET=latin1;
         
         
-        
+DROP TABLE IF EXISTS gameday.feedPlays;
+CREATE TABLE gameday.feedPlays (
+  gameName          VARCHAR(38) NOT NULL,
+  description	    VARCHAR(450),
+  player_id         VARCHAR(6),
+  mph               VARCHAR(6),
+  distance          VARCHAR(6),
+  result          VARCHAR(25)
+) ENGINE=InnoDB AUTO_INCREMENT=1315461 DEFAULT CHARSET=latin1;
 
+        
+        

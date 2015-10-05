@@ -5,9 +5,8 @@ import logging
 
     
 def createMLB(db):
-    sqlFile = "../sql/createGamedaySchema.sql"
+    sqlFile = "..\\sql\\createGamedaySchema.sql"
     
-    #error here
     db.run(sqlFile)
     
 def create():

@@ -9,10 +9,9 @@ class _7ZipController(UnzipProgramController):
         
     def unzip(self, fileName, outputDir):
         unzipCommand = self.locationOf7Zip + " x -y -o" + outputDir + " " + fileName
-        unzipCommand2 = "unzip " + fileName + " -d " + outputDir
         
-        logging.info("running:"+unzipCommand2)
-        subprocess.call(unzipCommand2, shell=True)
+        logging.info("running:"+unzipCommand)
+        subprocess.call(unzipCommand, shell=True)
         
   
     

@@ -6,17 +6,19 @@ from osandio._7ZipController import _7ZipController
 class BBOSConfig:
     #Gameday
     gamedayURL = 'http://gd2.mlb.com/components/game/'
+    statsapiURL = 'http://statsapi.mlb.com/api/v1/game/'
     gamedayDaysBackToLoad = 2
+    
     dbUser = 'bbos'
     dbPass = 'bbos'
     dbHost = 'localhost'
     dbPort = 3306
     dbName = 'gameday'
-    mySQLLocation = '/usr/local/mysql/bin/mysql'
-    numberOfThreads = 6
+    mySQLLocation = 'C:\\Program Files\\MySQL\\MySQL Server 5.5\\bin'
+    numberOfThreads = 8
     
     #logging
-    logLocation = 'logs'
+    logLocation = 'c:\\temp'
     logScreenPrintingLogLevel = logging.INFO  
     
     #file compression

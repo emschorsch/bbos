@@ -9,7 +9,7 @@ class GamedayLoaderFTest(unittest.TestCase):
         self.db = DB();
             
     def testLoad(self):
-        url = "http://gd2.mlb.com/components/game/mlb/year_2008/month_04/day_12/gid_2008_04_12_milmlb_nynmlb_1/"
+        url = "http://gd2.mlb.com/components/game/mlb/year_2015/month_04/day_29/gid_2015_04_29_milmlb_cinmlb_1/"
         
         xmlProvider = GamedayXMLProvider(url)
         

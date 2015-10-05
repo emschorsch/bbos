@@ -1,49 +1,49 @@
 ################################# create the mlb/pitchfx database
-DROP DATABASE IF EXISTS `mlb`;
- CREATE DATABASE `mlb` /*!40100 DEFAULT CHARACTER SET latin1 */;
 
-
-################################# teams
-DROP TABLE IF EXISTS mlb.teams;
-
-create table mlb.teams
-select seasonYear, gamedayID, code, abbreviation, location, league, league_id, division_id
-from (
-  select SUBSTR(gameName, 5, 4) as seasonYear, 
-        if (id>0, id, file) as gamedayID, 
-        if (id>0,code,id) as code,         
-        abbrev as abbreviation, name as location, league, league_ID, division_ID
-    from gameday.Teams t
-) tmp
-group by seasonYear, gamedayID, code;
+drop table if exists mlb.teams;
  
+create table mlb.teams
+select distinct(id) as gamedayID, code, abbrev as abbreviation, name as location, league 
+  from gamedayMLB.Teams
+ where gameName not like 'gid_2006%';
+ 
+insert into mlb.teams
+select gamedayID, code, abbreviation, name as location, league
+  from 
+(select distinct(t.id) as code, ' ' as gamedayID, abbrev as abbreviation, name, league 
+  from gamedayMLB.Teams t
+ where gameName like 'gid_2006%'
+   and t.id not in (select distinct(tNot06.code) from mlb.teams tNot06)
+) temp;
+ 
+delete from mlb.teams where teams.code REGEXP '[[:digit:]]+';
+
 ALTER TABLE mlb.teams
  ADD teamID INT(6) UNSIGNED AUTO_INCREMENT FIRST,
   ADD PRIMARY KEY (teamID);
-create unique index iGamedayID on mlb.teams (seasonYear, gamedayID);
-create index iCode on mlb.teams (seasonYear, code);
 
+create index iAbbreviation on mlb.teams (abbreviation);
+
+create unique index iCode on mlb.teams (code);
 
 
 ################################# team names
-create table mlb.tMostUsedTeamNames
-select seasonYear, id as gamedayID, name
-from (
-select seasonYear, max(timesNameUsed), id, name
-from (
-select count(tn.name) as timesNameUsed, SUBSTR(gameName, 5, 4) as seasonYear,
-       tn.id, name
-  from gameday.teamNames tn
- where tn.id != ''
- group by SUBSTR(gameName, 5, 4), id, name
-) timesUsed
-group by seasonYear, id
-) maxTimesUsed
-order by seasonYear, id;  
-  
 ALTER TABLE mlb.teams
   ADD name varchar(50);
  
+create table mlb.tMostUsedTeamNames
+select id as gamedayID, name
+from (
+select max(timesNameUsed), id, name
+from (
+select count(tn.name) as timesNameUsed, tn.id, name
+  from gamedayMLB.teamNames tn
+ group by id, name
+) timesUsed
+group by id
+) maxTimesUsed
+order by id;  
+  
 update mlb.teams t, mlb.tMostUsedTeamNames tn
    set t.name = tn.name
  where t.gamedayID = tn.gamedayID;
@@ -60,7 +60,7 @@ from (
 select max(timesNameUsed), id, location, name
 from (
 select count(id) as timesNameUsed, id, location, name
-  from gameday.Stadiums s
+  from gamedayMLB.Stadiums s
  where name is not null
  group by id, location, name
 ) timesUsed
@@ -71,32 +71,22 @@ order by id;
 ALTER TABLE mlb.stadiums
  ADD stadiumID INT(6) UNSIGNED AUTO_INCREMENT FIRST,
   ADD PRIMARY KEY (stadiumID);
-create unique index iGamedayID on mlb.stadiums (gamedayID);  
   
   
 ################################# players
 DROP TABLE IF EXISTS mlb.players;
-  
-create table mlb.tNameCounts
+
+create table mlb.players 
+select eliasID, last, first, throws
+from (
+select eliasID, max(timesNameUsed), last, first, throws
+from (
 select id as eliasID, count(id) as timesNameUsed, last, first, rl as throws
-          from gameday.players p
-        -- where p.id = 453328
-        group by eliasID, last, first, rl;
-        
-create table mlb.tNameCountsMaxes
-select eliasID, max(timesNameUsed) as maxTimesNameUsed
-  from mlb.tNameCounts
- group by eliasID;
- 
-create table mlb.players         
-select nc.eliasID, last, first, throws
-  from mlb.tNameCounts nc, mlb.tNameCountsMaxes ncm
- where nc.eliasID = ncm.eliasID
-   and nc.timesNameUsed = ncm.maxTimesNameUsed
- group by nc.eliasID;
-        
-drop table if exists mlb.tNameCountsMaxes;
-drop table if exists mlb.tNameCounts;
+  from gamedayMLB.players
+group by eliasID, last, first
+) nameCounts
+group by eliasID
+) mostUsedName;
   
 ALTER TABLE mlb.players
  ADD PRIMARY KEY (eliasID);
@@ -105,9 +95,13 @@ ALTER TABLE mlb.players
 ################################# games
 DROP TABLE IF EXISTS mlb.games;
 
-create table mlb.tGames
-select g.gameName, leagueLevel, local_game_time as gameTime, g.stadiumID,
-       CASE g.type 
+create table mlb.games
+SELECT           DISTINCT(gameName),
+                 leagueLevel,
+                 local_game_time as gameTime,
+                 DATE(CONCAT(SUBSTR(gameName, 5, 4), '-', SUBSTR(gameName, 10, 2), '-', SUBSTR(gameName, 13, 2))) as gameDate,
+                 (select stadiumID from mlb.stadiums s where s.gamedayID = g.stadiumID) as stadiumID,
+                 CASE g.type 
 								      WHEN "E" THEN 'exhibition' 
 								      WHEN "S" THEN 'spring' 
 								      WHEN "R" THEN 'regular' 
@@ -115,75 +109,85 @@ select g.gameName, leagueLevel, local_game_time as gameTime, g.stadiumID,
 								      WHEN "D" THEN 'division' 
 								      WHEN "L" THEN 'league' 
 								      WHEN "W" THEN 'world' 
-								      ELSE g.type 
+								      ELSE '' 
 								      END as gameType,
-       g.home, 
-       g.away,
-       DATE(CONCAT(SUBSTR(gameName, 5, 4), '-', SUBSTR(gameName, 10, 2), '-', SUBSTR(gameName, 13, 2))) as gameDate,
-       SUBSTR(gameName, 5, 4) as gameYear          
-  from gameday.Games g;
-ALTER IGNORE TABLE mlb.tGames ADD UNIQUE INDEX idx_temp (gameName);  
-  
-create table mlb.games
-SELECT           g.gameName,
-                 g.leagueLevel,
-                 g.gameTime,
-                 g.gameDate,
-                 (select s.stadiumID from mlb.stadiums s 
-                   where s.gamedayID = g.stadiumID) as stadiumID,
-                 g.gameType,
-                 (select th.teamID from mlb.teams th
-                   where g.home = th.gamedayID and g.gameYear = th.seasonYear) as home,
-                 (select ta.teamID from mlb.teams ta
-                   where g.away = ta.gamedayID and g.gameYear = ta.seasonYear) as away,
-                 g.gameYear
-  FROM mlb.tGames g;
+                 (select t.teamID from mlb.teams t where g.home = t.gamedayID) as home,
+                 (select t.teamID from mlb.teams t where g.away = t.gamedayID) as away,
+                 (select t.league from mlb.teams t where g.home = t.gamedayID) as league
+  FROM gamedayMLB.Games g
+ WHERE SUBSTR(gameName, 5, 4) > 2006;
+ 
+insert into mlb.games
+SELECT           DISTINCT(gameName),
+                 leagueLevel,
+                 local_game_time as gameTime,
+                 DATE(CONCAT(SUBSTR(gameName, 5, 4), '-', SUBSTR(gameName, 10, 2), '-', SUBSTR(gameName, 13, 2))) as gameDate,
+                 (select stadiumID from mlb.stadiums s where s.gamedayID = g.stadiumID) as stadiumID,
+                 CASE g.type 
+								      WHEN "E" THEN 'exhibition' 
+								      WHEN "S" THEN 'spring' 
+								      WHEN "R" THEN 'regular' 
+								      WHEN "A" THEN 'allStar' 
+								      WHEN "D" THEN 'division' 
+								      WHEN "L" THEN 'league' 
+								      WHEN "W" THEN 'world' 
+								      ELSE '' 
+								      END as gameType,
+                 (select t.teamID from mlb.teams t where g.home = t.code) as home,
+                 (select t.teamID from mlb.teams t where g.away = t.code) as away,
+                 (select t.league from mlb.teams t where g.home = t.code) as league
+  FROM gamedayMLB.Games g
+ WHERE SUBSTR(gameName, 5, 4) = 2006;
 
-DROP TABLE IF EXISTS mlb.tGames;
-
+ALTER TABLE mlb.games
+ ADD season INT(4) AFTER away;
+ 
+update mlb.games
+   set season = year(gameDate);
+	 
 ALTER TABLE mlb.games
  ADD gameID INT(6) UNSIGNED AUTO_INCREMENT FIRST,
   ADD PRIMARY KEY (gameID);
-  
+	
 create unique index iGameName on mlb.games (gameName);
 
 
 ################################# game rosters
 drop table if exists mlb.rosters;
 
-create table mlb.tPlayers
-select p.gameName, p.id as eliasID, p.position as fieldingPosition, 
-       p.bat_order as battingOrder, 
-			 IF(p.homeAway = 'away', g.away,
-                               g.home) as teamID
-  from gameday.players p, mlb.games g
- where p.gameName = g.gameName;
- 
-ALTER TABLE mlb.tPlayers
-  ADD tempID INT(6) UNSIGNED AUTO_INCREMENT FIRST,
-  ADD PRIMARY KEY (tempID);
-  
-create table mlb.tPlayersNonDups
-select max(tempID) as tempID, gameName, eliasID
-  from mlb.tPlayers tp
- group by gameName, eliasID;
-
 create table mlb.rosters 
-select g.gameID, p.eliasID, 
-			 p.teamID,
-       p.fieldingPosition, p.battingOrder
-  from mlb.tPlayers p, mlb.games g, mlb.tPlayersNonDups pd
- where p.gameName = g.gameName
-	 and p.tempID = pd.tempID;
-   
+select g.gameID, p.id as eliasID, t.teamID, p.position as fieldingPosition, p.bat_order as battingOrder
+  from gamedayMLB.players p, mlb.teams t, mlb.games g
+ where p.team = t.abbreviation
+   and p.gameName = g.gameName
+	 and g.away = t.teamID
+	 and p.homeAway = 'away';
+ 
+insert into mlb.rosters
+select g.gameID, p.id as eliasID, t.teamID, p.position as fieldingPosition, p.bat_order as battingOrder
+  from gamedayMLB.players p, mlb.teams t, mlb.games g
+ where p.team = t.abbreviation
+   and p.gameName = g.gameName
+	 and g.home = t.teamID
+	 and p.homeAway = 'home';
+
 create index iGameID on mlb.rosters (gameID);
-create index iEliasID on mlb.rosters (eliasID);
+
+create table mlb.tDuplicateGamePlayers
+select gameID, eliasID from (
+select count(*) cnt, r.gameID, r.eliasID 
+  from mlb.rosters r
+ group by r.gameID, r.eliasID
+ ) t where cnt > 1;
+ 
+delete mlb.rosters r from mlb.rosters as r, mlb.tDuplicateGamePlayers as t
+ where r.gameID = t.gameID
+   and r.eliasID = t.eliasID;
+	 
+drop table if exists mlb.tDuplicateGamePlayers;
 
 ALTER TABLE mlb.rosters
  ADD PRIMARY KEY (gameID, eliasID);
-
-drop table mlb.tPlayers;
-drop table mlb.tPlayersNonDups;
 
 
 ################################# per game pitching
@@ -194,10 +198,10 @@ select g.gameID, p.id as eliasID,
        outs, bf as battersFaced, hr, bb, so, er, r as runs, h as hits, win, loss, 
 			 (hold+hld) as hold, blownhold, 
 			 (sv+save) as save, (bs+blownsave) as blownsave
- from gameday.pitchers p, mlb.games g
+ from gamedayMLB.pitchers p, mlb.games g
 where p.gameName = g.gameName;
 
-ALTER IGNORE TABLE mlb.pitchers
+ALTER TABLE mlb.pitchers
  ADD PRIMARY KEY (gameID, eliasID);
 
 
@@ -210,32 +214,20 @@ select g.gameID, b.id as eliasID,
 			 b.hr, b.d as 2B, b.t as 3B, 
 			 b.r, b.rbi, b.lob,
 			 b.bo as battingOrder
- from gameday.batters b, mlb.games g
-where b.gameName = g.gameName
-group by g.gameID, b.id;
+ from gamedayMLB.batters b, mlb.games g
+where b.gameName = g.gameName;
 
 ALTER TABLE mlb.batters
  ADD PRIMARY KEY (gameID, eliasID);
 
 
-
 ################################# atbats
-create table mlb.tAtBats
-select *
-  from gameday.atbats;
-  
-ALTER TABLE mlb.tAtBats
-  ADD tempID INT(6) UNSIGNED AUTO_INCREMENT FIRST,
-  ADD PRIMARY KEY (tempID);
-  
-create table mlb.tOrderedAtBats
-select max(a.tempID) as tempID,
-       a.gameName,
+create table mlb.tOrderedAtbats
+select a.gameName,
 			 a.inning,
 			 a.halfInning,
 			 a.num as gamedayAtBatID
-  from mlb.tAtBats a
- group by a.gameName, a.inning, a.halfInning, a.num
+  from gamedayMLB.atbats a
  order by a.gameName, a.num;
  
 set @inningAtBatID:=1;
@@ -243,8 +235,7 @@ set @previousInning:="";
 set @previousHalfInning:="";
 
 create table mlb.tAtbatOrder
-select a.tempID,
-       a.gameName, 
+select a.gameName, 
        @inningAtBatID:=if(@previousInning=a.inning and 
                           @previousHalfInning=a.halfInning,
 			                    @inningAtBatID+1,1) as halfInningAtBatID,
@@ -256,6 +247,7 @@ select a.tempID,
   from mlb.tOrderedAtbats a;
  
 drop table if exists mlb.tOrderedAtbats;
+
 drop table if exists mlb.atbats;
 
 create table mlb.atbats
@@ -270,20 +262,18 @@ select g.gameID,
 			 a.p_throws as pitcherHand, a.stand as batterHand,
        a.o outs, a.b as balls, a.s strikes, 
 			 a.b_height as batterHeight
-  from mlb.tAtBats a, mlb.tAtbatOrder ao, mlb.games g
+  from gamedayMLB.atbats a, mlb.tAtbatOrder ao, mlb.games g
  where a.gameName = g.gameName
-   and a.tempID = ao.tempID;
+   and ao.gameName = g.gameName
+	 and a.num = ao.gamedayAtBatID;
 
 ALTER TABLE mlb.atbats
  ADD atbatID INT(6) UNSIGNED AUTO_INCREMENT FIRST,
   ADD PRIMARY KEY (atbatID);
 
-create unique index gameAtBat on mlb.atbats (gameID, atbatID);
-create index gamedayAtBat on mlb.atbats (gamedayAtBatID);
+create unique index gameAtBat on mlb.atbats (gameID, gamedayAtBatID);
 
 drop table if exists mlb.tAtbatOrder;
-drop table if exists mlb.tAtBats;
-
 
 
 ################################# atbat results
@@ -311,7 +301,7 @@ select a.atbatID,
 	    a.playResult REGEXP 'Pop' or 
 	    a.playResult REGEXP 'Triple' or  
 	    a.playResult REGEXP 'Fan interference' or
-	    a.playResult REGEXP 'Triple Play', 1, 0) as inPlay,
+			a.playResult REGEXP 'Triple Play', 1, 0) as inPlay,
 
 	 IF(a.playResult REGEXP 'Out' or 
 	    a.playResult REGEXP 'Sac' or 
@@ -345,7 +335,7 @@ select a.atbatID,
           a.description REGEXP 'pop up' or 
           a.description REGEXP 'bunt pop', 1, 0) as popUp,
 					
-	 IF(a.description REGEXP 'in foul territory', 1, 0) as foulInPlay,
+			 IF(a.description REGEXP 'in foul territory', 1, 0) as foulInPlay,
  	 IF(a.playResult = 'Strikeout', 1, 0) as strikeout,
 	 IF(a.playResult = 'Ground Out', 1, 0) as groundout,
 	 IF(a.playResult = 'Walk', 1, 0) as walk,
@@ -429,6 +419,87 @@ update mlb.pitchers p, mlb.tPitcherOrderMaster m
    and p.eliasID = m.pitcherID;
 
 drop table mlb.tPitcherOrderMaster;
+
+
+################################# hit chart
+create table mlb.tHitChart
+select g.gameID, h.*
+  from gamedayMLB.hits h, mlb.games g
+ where h.gameName = g.gameName
+   and h.type <> 'E'
+ order by g.gameID, h.inning, h.hitID;
+
+set @inningAtBatID:=1;
+set @previousGame:="";
+set @previousInning:="";
+set @previousHitID:="";
+create table mlb.tNumberedHitChart
+select @inningAtBatID:=if(@previousGame=t.gameID and 
+                          @previousInning=t.inning and 
+                          @previousHitID<>t.hitID,
+			  @inningAtBatID+1,1) as inningAtBat,
+       @previousGame:=t.gameID,
+       @previousInning:=t.inning,
+       @previousHitID:=t.hitID,
+       t.*
+  from mlb.tHitChart t;
+	
+drop table mlb.tHitChart;
+
+create table mlb.tOrderedAtBats
+select a.gameID, a.inning, a.batterID, a.pitcherID, a.atbatID
+  from mlb.atbats a, mlb.atbatResults ar
+ where a.atbatID = ar.atbatID
+   and ar.inPlay = 1
+ order by a.gameID, a.inning, a.atbatID;
+
+set @inningAtBatID:=1;
+set @previousGame:="";
+set @previousInning:="";
+set @previousAtBatID:="";
+create table mlb.tNumberedAtBats
+select @inningAtBatID:=if(@previousGame=t.gameID 
+                          and @previousInning=t.inning
+                          and @previousAtBatID<>t.atbatID,
+			                 @inningAtBatID+1,1) as inningAtBat,
+       @previousGame:=t.gameID,
+       @previousInning:=t.inning,
+       @previousAtBatID:=t.atbatID,
+       t.*
+  from mlb.tOrderedAtBats t;
+
+drop table mlb.tOrderedAtBats;
+
+ALTER TABLE mlb.tNumberedHitChart
+ ADD PRIMARY KEY (gameID, inning, batter, pitcher, inningAtBat);
+ALTER TABLE mlb.tNumberedAtBats
+ ADD PRIMARY KEY (gameID, inning, batterID, pitcherID, inningAtBat);
+	
+drop table if exists mlb.hits;
+
+-- 210 is the y of home plate, so 5 is a long long long long home run
+-- 125 is the x of home plate
+-- the y is turned into a positive value starting from 210
+-- the x is turned into a positive/negative left right value with 125 becoming 0
+create table mlb.hits
+select ta.atbatID,
+       t.x - 125 as x, 
+			 210 - t.y as y,
+       SQRT(POWER((210 - t.y), 2) + POWER(abs(t.x - 125), 2)) as distance,
+       t.type as outHitError, 
+			 t.des as description
+  from mlb.tNumberedHitChart t, mlb.tNumberedAtBats ta
+ where t.gameID = ta.gameID
+   and t.inning = ta.inning
+   and t.batter = ta.batterID
+   and t.pitcher = ta.pitcherID
+   and t.inningAtBat = ta.inningAtBat;
+
+ALTER TABLE mlb.hits
+ ADD PRIMARY KEY (atbatID);
+
+drop table mlb.tNumberedAtBats;
+drop table mlb.tNumberedHitChart;
     
     
 ################################# pitches
@@ -444,40 +515,34 @@ select a.atbatID, p.id as gamePitchID,
 	 p.y,
 	 start_speed as 'Speed',  
    CASE p.pitch_type 
-      WHEN "SC" THEN 'Screwball' 
-      WHEN "EP" THEN 'Ephuus' 
-      WHEN "KC" THEN 'KnuckleCurve' 
-      WHEN "FO" THEN 'Forkball' 
-      WHEN "FT" THEN 'TwoSeamFastball' 
       WHEN "FS" THEN 'Splitter' 
       WHEN "SL" THEN 'Slider' 
-      WHEN "FF" THEN 'FourSeamFastball' 
+      WHEN "FF" THEN 'FourSeamFastBall' 
       WHEN "SI" THEN 'Sinker' 
       WHEN "CH" THEN 'ChangeUp' 
-      WHEN "FA" THEN 'Fastball' 
+      WHEN "FA" THEN 'FastBall' 
       WHEN "CU" THEN 'Curve' 
       WHEN "FC" THEN 'Cutter' 
       WHEN "KN" THEN 'Knuckle' 
-      WHEN "IN" THEN 'IntentionalBall' 
-      WHEN "UN" THEN '' 
-      WHEN null THEN '' 
-      ELSE p.pitch_type 
+      WHEN "IN" THEN 'IN' 
+      WHEN "PO" THEN 'PO' 
+      WHEN "UN" THEN 'UN' 
+      WHEN "AB" THEN 'AB' 
+      ELSE '' 
       END as type,
-   IF(p.pitch_type = "SC", 1, 0) as 'Screwball',
-   IF(p.pitch_type = "EP", 1, 0) as 'Ephuus',
-   IF(p.pitch_type = "KC", 1, 0) as 'KnuckleCurve',
-   IF(p.pitch_type = "FO", 1, 0) as 'Forkball',
-   IF(p.pitch_type = "FT", 1, 0) as 'TwoSeamFastball',
    IF(p.pitch_type = "FS", 1, 0) as 'Splitter', 
 	 IF(p.pitch_type = "SL", 1, 0) as 'Slider', 
-	 IF(p.pitch_type = "FF", 1, 0) as 'FourSeamFastball', 
+	 IF(p.pitch_type = "FF", 1, 0) as 'FourSeamFastBall', 
 	 IF(p.pitch_type = "SI", 1, 0) as 'Sinker', 
 	 IF(p.pitch_type = "CH", 1, 0) as 'ChangeUp', 
-	 IF(p.pitch_type = "FA", 1, 0) as 'Fastball', 
+	 IF(p.pitch_type = "FA", 1, 0) as 'FastBall', 
 	 IF(p.pitch_type = "CU", 1, 0) as 'Curve', 
 	 IF(p.pitch_type = "FC", 1, 0) as 'Cutter', 
 	 IF(p.pitch_type = "KN", 1, 0) as 'Knuckle', 
-	 IF(p.pitch_type = '', 1, 0) as 'Unknown', 
+	 IF(p.pitch_type = "IN", 1, 0) as 'IB', 
+	 IF(p.pitch_type = "PO", 1, 0) as 'PO', 
+	 IF(p.pitch_type = "UN", 1, 0) as 'UN', 
+	 IF(p.pitch_type = "AB", 1, 0) as 'AB',
        p.type_confidence as 'Confidence',
        sz_top as 'KZTop', 
        sz_bot as 'KZBottom',
@@ -512,9 +577,8 @@ select a.atbatID, p.id as gamePitchID,
 	 p.az as releasePointAccelerationVert,
 	 p.on_1B as on1B,
 	 p.on_2B as on2B,
-	 p.on_3B as on3B,
-	 p.play_guid
-  from gameday.pitches p, mlb.games g, mlb.atbats a
+	 p.on_3B as on3B
+  from gamedayMLB.pitches p, mlb.games g, mlb.atbats a
  where p.gameName = g.gameName
    and g.gameID = a.gameID
 	 and p.gameAtBatID = a.gamedayAtBatID;
@@ -658,102 +722,6 @@ select p.pitchID,
  
 ALTER TABLE mlb.pitchResult
  ADD PRIMARY KEY (pitchID);
-
-
-
-################################# hit chart
-create table mlb.tHitChart
-select g.gameID, h.*
-  from gameday.hits h, mlb.games g
- where h.gameName = g.gameName
-   and h.type <> 'E'
- order by g.gameID, h.inning, h.hitID;
-
-set @inningAtBatID:=1;
-set @previousGame:="";
-set @previousInning:="";
-set @previousHitID:="";
-create table mlb.tNumberedHitChart
-select @inningAtBatID:=if(@previousGame=t.gameID and 
-                          @previousInning=t.inning and 
-                          @previousHitID<>t.hitID,
-			  @inningAtBatID+1,1) as inningAtBat,
-       @previousGame:=t.gameID,
-       @previousInning:=t.inning,
-       @previousHitID:=t.hitID,
-       t.*
-  from mlb.tHitChart t;
-	
-drop table mlb.tHitChart;
-
-create table mlb.tOrderedAtBats
-select a.gameID, a.inning, a.batterID, a.pitcherID, a.atbatID
-  from mlb.atbats a, mlb.atbatresults ar
- where a.atbatID = ar.atbatID
-   and ar.inPlay = 1
- order by a.gameID, a.inning, a.atbatID;
-
-set @inningAtBatID:=1;
-set @previousGame:="";
-set @previousInning:="";
-set @previousAtBatID:="";
-create table mlb.tNumberedAtBats
-select @inningAtBatID:=if(@previousGame=t.gameID 
-                          and @previousInning=t.inning
-                          and @previousAtBatID<>t.atbatID,
-			                 @inningAtBatID+1,1) as inningAtBat,
-       @previousGame:=t.gameID,
-       @previousInning:=t.inning,
-       @previousAtBatID:=t.atbatID,
-       t.*
-  from mlb.tOrderedAtBats t;
-
-drop table mlb.tOrderedAtBats;
-
-ALTER TABLE mlb.tNumberedHitChart
- ADD PRIMARY KEY (gameID, inning, batter, pitcher, inningAtBat);
-ALTER TABLE mlb.tNumberedAtBats
- ADD PRIMARY KEY (gameID, inning, batterID, pitcherID, inningAtBat);
-	
-	
-drop table if exists mlb.tStringHits;
--- 210 is the y of home plate, so 5 is a long long long long home run
--- 125 is the x of home plate
--- the y is turned into a positive value starting from 210
--- the x is turned into a positive/negative left right value with 125 becoming 0
-create table mlb.tStringHits
-select ta.atbatID,
-       t.x - 125 as x, 
-			 210 - t.y as y,
-       SQRT(POWER((210 - t.y), 2) + POWER(abs(t.x - 125), 2)) as distance,
-       t.type as outHitError, 
-			 t.des as description
-  from mlb.tNumberedHitChart t, mlb.tNumberedAtBats ta
- where t.gameID = ta.gameID
-   and t.inning = ta.inning
-   and t.batter = ta.batterID
-   and t.pitcher = ta.pitcherID
-   and t.inningAtBat = ta.inningAtBat;
-
-
-DROP TABLE IF EXISTS mlb.hits;
-create table mlb.hits
-select ab.atbatID,
-       p.pitchID,
-       ph.angle, ph.direction, ph.distance as statcastDistance, ph.speed,
-       h.x, h.y, h.distance as stringerDistance, h.outHitError, h.description
-  from gameday.pregumbohits ph, 
-       mlb.pitches p,
-       mlb.atbats ab left join mlb.tStringHits h on h.atbatID = ab.atbatID
- where ph.play_guid = p.play_guid
-   and p.atbatID = ab.atbatID;
-
-ALTER TABLE mlb.hits
- ADD PRIMARY KEY (atbatID, pitchID);
-
-drop table mlb.tNumberedAtBats;
-drop table mlb.tNumberedHitChart;
-drop table mlb.tStringHits;
 	
 	
 ############################## umpires
@@ -761,7 +729,7 @@ drop table if exists mlb.umpires;
 
 CREATE TABLE mlb.umpires AS
 SELECT name, id as gamedayID
-  from gameday.umpires
+  from gamedayMLB.umpires
  where id is not null
    and name is not null
 	 and name <> '--NO UMP--'
@@ -769,7 +737,7 @@ SELECT name, id as gamedayID
  
 insert into mlb.umpires
 SELECT name, id as gamedayID
-  from gameday.umpires u
+  from gamedayMLB.umpires u
  where id is null
    and u.name not in (select name from mlb.umpires mu)
    and name is not null
@@ -784,7 +752,7 @@ ALTER TABLE mlb.umpires
 ############################## ump rosters
 CREATE TABLE mlb.tFirstUmps
 select g.gameID, mu.umpID
-  from mlb.umpires mu, gameday.umpires u, mlb.games g
+  from mlb.umpires mu, gamedayMLB.umpires u, mlb.games g
  where u.gameName = g.gameName
    and mu.name = u.name
    and u.position = 'first'
@@ -792,7 +760,7 @@ select g.gameID, mu.umpID
 
 CREATE TABLE mlb.tSecondUmps
 select g.gameID, mu.umpID
-  from mlb.umpires mu, gameday.umpires u, mlb.games g
+  from mlb.umpires mu, gamedayMLB.umpires u, mlb.games g
  where u.gameName = g.gameName
    and mu.name = u.name
    and u.position = 'second'
@@ -800,7 +768,7 @@ select g.gameID, mu.umpID
 	 
 CREATE TABLE mlb.tThirdUmps
 select g.gameID, mu.umpID
-  from mlb.umpires mu, gameday.umpires u, mlb.games g
+  from mlb.umpires mu, gamedayMLB.umpires u, mlb.games g
  where u.gameName = g.gameName
    and mu.name = u.name
    and u.position = 'third'
@@ -808,14 +776,14 @@ select g.gameID, mu.umpID
 	 
 CREATE TABLE mlb.tHomeUmps
 select g.gameID, mu.umpID
-  from mlb.umpires mu, gameday.umpires u, mlb.games g
+  from mlb.umpires mu, gamedayMLB.umpires u, mlb.games g
  where u.gameName = g.gameName
    and mu.name = u.name
    and u.position = 'home'
    group by g.gameID;
-	 
-drop table if exists mlb.umpRosters;
 
+drop table if exists mlb.umpRosters;
+	 
 create table mlb.umpRosters
 select tf.gameID, tf.umpID as firstUmp, ts.umpID as secondUmp, tt.umpID as thirdUmp, th.umpID as homeUmp
   from mlb.tFirstUmps tf, mlb.tSecondUmps ts, mlb.tThirdUmps tt, mlb.tHomeUmps th
@@ -826,10 +794,76 @@ select tf.gameID, tf.umpID as firstUmp, ts.umpID as secondUmp, tt.umpID as third
 ALTER TABLE mlb.umpRosters
  ADD PRIMARY KEY (gameID);
 	
-DROP TABLE mlb.tthirdumps;
-DROP TABLE mlb.tsecondumps;
-DROP TABLE mlb.tfirstumps;
-DROP TABLE mlb.thomeumps;
+DROP TABLE mlb.tThirdUmps;
+DROP TABLE mlb.tSecondUmps;
+DROP TABLE mlb.tFirstUmps;
+DROP TABLE mlb.tHomeUmps;
+   
+
+################################# game subsets
+drop table if exists mlb.gameSubset;
+
+create table mlb.gameSubset
+select gameID, gameType as setName, "gameType" as subset, g.season
+  from mlb.games g
+ where g.gameType <> '';
+ 
+ALTER TABLE mlb.gameSubset
+ CHANGE subset subset VARCHAR(20) NOT NULL;
+ALTER TABLE mlb.gameSubset
+ ADD PRIMARY KEY (gameID, setName, subset, season);
+ 
+create index iGameID on mlb.gameSubset (gameID);
+
+
+################################# game subsets halfSeasons, midSeason
+create table mlb.tGamesInSeason
+select count(g.gameID) as gamesInSeason, g.season
+  from mlb.games g
+ where g.gameType = 'regular'
+ group by g.season;
+
+create table mlb.tOrderedGames
+select g.gameID, g.season
+  from mlb.games g
+ where g.gameType = 'regular'
+ order by g.season, g.gameDate, g.gameTime;
+
+set @gameNumber:=0;
+set @previousSeason:=1901;
+create table mlb.tSeasonGameNumber
+select @gameNumber:=if(@previousSeason=tog.season, 
+                       @gameNumber+1, 
+		       0) as gameNumber,
+       @previousSeason:=tog.season,
+       tog.gameID,
+			 tog.season
+  from mlb.tOrderedGames tog;
+
+			 
+insert into mlb.gameSubset
+select tsgn.gameID,
+       if((tsgn.gameNumber < tgis.gamesInSeason / 2), 'firstHalf', 'secondHalf') as setName, 
+       'half' as subset,
+			 tsgn.season
+  from mlb.tSeasonGameNumber tsgn, mlb.tGamesInSeason tgis
+ where tsgn.season = tgis.season;
+
+			 
+insert into mlb.gameSubset
+select tsgn.gameID,
+       if((tsgn.gameNumber < tgis.gamesInSeason / 4) or (tsgn.gameNumber >= tgis.gamesInSeason / 4 * 3),
+			 if((tsgn.gameNumber < tgis.gamesInSeason / 4), 'start', 'end'), 
+			 'middle') as setName, 
+       'startMiddleEnd' as subset,
+			 tsgn.season
+  from mlb.tSeasonGameNumber tsgn, mlb.tGamesInSeason tgis
+ where tsgn.season = tgis.season;
+ 
+ 
+drop table mlb.tGamesInSeason;
+drop table mlb.tOrderedGames;
+drop table mlb.tSeasonGameNumber;  
 
   
 ################################# game conditions
@@ -838,7 +872,7 @@ drop table if exists mlb.gameConditions;
 create table mlb.gameConditions
 select g.gameID, gc.attendence, gc.gameLength, 
        gc.forecast, gc.temperature, gc.windDirection, gc.windMPH
-  from gameday.gameConditions gc, mlb.games g
+  from gamedayMLB.gameConditions gc, mlb.games g
  where gc.gameName = g.gameName;
 
 ALTER TABLE mlb.gameConditions
@@ -850,7 +884,7 @@ drop table if exists mlb.coaches;
 
 create table mlb.coaches
 select c.id as gamedayID, c.first, c.last, c.num as number
-  from gameday.coaches c
+  from gamedayMLB.coaches c
  group by c.id, c.first, c.last, c.num;
  
 ALTER TABLE mlb.coaches
@@ -863,9 +897,8 @@ drop table if exists mlb.coachRosters;
 
 create table mlb.coachRosters
 select g.gameID, t.teamID, mc.coachID, c.position
-  from mlb.games g, gameday.coaches c, mlb.coaches mc, mlb.teams t
+  from mlb.games g, gamedayMLB.coaches c, mlb.coaches mc, mlb.teams t
  where g.gameName = c.gameName
-   and g.gameYear = t.seasonYear
    and c.id = mc.gamedayID
 	 and c.team = t.abbreviation; 
  
@@ -876,7 +909,7 @@ drop table if exists mlb.actions;
 create table mlb.actions
 select g.gameID, a.inning, a.halfInning, a.eventNumber, a.o as outs, a.b as balls, a.s as strikes, 
        p.eliasID, a.pitch, a.event, a.des as description
-  from gameday.action a, mlb.games g, mlb.players p
+  from gamedayMLB.action a, mlb.games g, mlb.players p
  where a.gameName = g.gameName
    and a.player = p.eliasID;
  
@@ -885,30 +918,113 @@ ALTER TABLE mlb.actions
   ADD PRIMARY KEY (actionID);
   
   
+################################# retrosheet events
+set @retrosheetEventID:=0;
+set @previousGame:="";
+create table mlb.tRetrosheetEvents
+select @retrosheetEventID:=if(@previousGame=gameID,
+			 @retrosheetEventID+1,0) as retrosheetEventID,
+       @previousGame:=gameID,
+       retrosheetEvents.*
+  from (
+select a.gameID, a.eventNumber, 
+       'action' as type, 
+       a.actionID as id
+  from mlb.actions a
+ where a.event REGEXP 'Stolen Base' or
+	a.event REGEXP 'Pickoff' OR
+	a.event REGEXP 'Wild Pitch' OR
+	a.event REGEXP 'Passed Ball' OR
+	a.event REGEXP 'Error' OR
+	a.event REGEXP 'Caught Stealing' OR
+	a.event REGEXP 'Picked off' OR
+	a.event REGEXP 'Runner Out' OR
+	a.event REGEXP 'Balk' OR
+	a.event REGEXP 'Defensive Indiff' OR
+	a.event REGEXP 'steals' OR
+	a.event REGEXP 'caught stealing' OR
+	a.event REGEXP 'picks off' OR
+	a.event REGEXP 'out at'
+union
+select ab.gameID, ab.eventNumber, 'atbat' as type, ab.atbatID as id
+  from mlb.atbats ab
+order by gameID, eventNumber
+) retrosheetEvents;
+
+drop table if exists mlb.retrosheetEvents;
+
+create table mlb.retrosheetEvents
+select tre.gameID, tre.eventNumber, type, id
+  from mlb.tRetrosheetEvents tre;
+
+ALTER TABLE mlb.retrosheetEvents
+ ADD PRIMARY KEY (gameID, eventNumber);
+	
+drop table if exists mlb.tRetrosheetEvents;
+
 
 ################################# batter hand
-drop table if exists mlb.batterHand;
 create table mlb.batterHand
-select gameYear, batterID, 
+select season, batterID, 
        IF((leftAtBats / atbats > .05) and (rightAtBats / atbats > .05), 
 			    'S', 
 					IF(leftAtBats > rightAtBats, 'L', 'R')
 				 ) as batterHand
   from (
-select g.gameYear, a.batterID, 
+select g.season, a.batterID, 
        sum(IF(a.batterHand = 'L', 1, 0)) leftAtBats, 
        sum(IF(a.batterHand = 'R', 1, 0)) rightAtBats, 
        count(a.batterHand) atBats
   from mlb.atbats a, mlb.games g
  where a.gameID = g.gameID
-   and a.batterID is not null
-   and a.gameID is not null
- group by a.batterID, g.gameYear
+ group by a.batterID, g.season
  ) handCount;
 
 ALTER TABLE mlb.batterHand
- ADD PRIMARY KEY (gameYear, batterID);
+ ADD PRIMARY KEY (season, batterID);
  
+
+################################# atbat subset
+drop table if exists mlb.atbatSubset;
+
+create table mlb.atbatSubset
+select a.atbatID, a.pitcherHand as setName, "pitcherHand" as subset
+  from mlb.atbats a
+ where a.pitcherHand <> '';
+	 
+ALTER TABLE mlb.atbatSubset
+ ADD PRIMARY KEY (atbatID, setName, subset);
+ 
+create index iAtBatID on mlb.atbatSubset (atbatID);
+
+insert into mlb.atbatSubset
+select a.atbatID, a.batterHand as setName, "batterHand" as subset
+  from mlb.atbats a
+ where a.batterHand <> '';
+ 
+insert into mlb.atbatSubset
+select a.atbatID, "all" as setName, "all" as subset
+  from mlb.atbats a;
+ 
+
+################################# combined subsets
+drop table if exists mlb.subsets;
+
+create table mlb.subsets
+select asub.atbatID, 
+       gs.season,
+       gs.setName   as gameSetName, 
+       gs.subset    as gameSubset,
+       asub.setName as atbatSetName, 
+       asub.subset  as atbatSubset
+  from mlb.atbatSubset asub, mlb.gameSubset gs, mlb.atbats a
+ where gs.gameID = a.gameID
+   and a.atbatID = asub.atbatID;
+ 
+ALTER TABLE mlb.subsets
+ ADD PRIMARY KEY (atbatID, season, gameSetName, gameSubset, atbatSetName, atbatSubset);
+ 
+create index iAtBatID on mlb.subsets (atbatID);
 
 
 ################################# player demographics
@@ -921,6 +1037,6 @@ select p.eliasID,
 			 pb.weight, pb.heightFeet, pb.heightInches,
 			 pb.dob, pb.pos, pb.jersey_number as jerseyNumber,
 			 pb.bats, pb.throws
-  from gameday.playerBios pb, mlb.players p
+  from gamedayMLB.playerBios pb, mlb.players p
  where pb.id = p.eliasID
- group by pb.id, pb.team, SUBSTR(pb.gameName, 5, 4);
+ group by pb.id, pb.team, SUBSTR(pb.gameName, 5, 4)

@@ -37,5 +37,24 @@ class Parser:
             
     def parse(self, xmlProvider):
         raise NotImplementedError
+    
+    def mapJsonList(self, items, fieldsToKeep):
+        filteredItems = []
+        
+        for item in items:
+            filteredItem = self.mapJsonHash(item, fieldsToKeep)
+            
+            filteredItems.append(filteredItem)
+        
+        return filteredItems
+    
+    def mapJsonHash(self, item, fieldsToKeep):
+        filteredItem = {}
+        
+        for key in item:
+            if key in fieldsToKeep:
+                filteredItem[key] = item[key]
+        
+        return filteredItem
      
         
