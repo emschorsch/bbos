@@ -12,10 +12,10 @@ class DB:
     
     def run(self, sqlFile):
         command = self.mySQLCommander.createMySQLCommand(sqlFile)
-        logging.debug("running:" + command.getCommand())
+        logging.info("running:" + command.getCommand())
         
         self.mySQLCommander.run(command)
-        logging.debug("complete")
+        logging.info("complete")
         
     def execute(self, sql):
         self.logStatement(sql)

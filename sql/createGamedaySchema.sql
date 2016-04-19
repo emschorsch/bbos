@@ -74,8 +74,6 @@ CREATE TABLE pitches (
   `gameAtBatID`     smallint(2) UNSIGNED DEFAULT NULL,
   `id`              mediumint(9) UNSIGNED,
   gamedayPitchID    int(8) UNSIGNED DEFAULT NULL AUTO_INCREMENT,
-  pitcher           mediumint(6) UNSIGNED DEFAULT NULL,
-  batter            mediumint(6) UNSIGNED DEFAULT NULL,
   `des`             VARCHAR(50) DEFAULT NULL,
   `type`            varchar(1) DEFAULT NULL,
   `x`               VARCHAR(25),
@@ -441,6 +439,7 @@ CREATE TABLE gameday.feedPlays (
   player_id         VARCHAR(6),
   mph               VARCHAR(6),
   distance          VARCHAR(6),
+  launch_angle      VARCHAR(6),
   result          VARCHAR(25)
 ) ENGINE=InnoDB AUTO_INCREMENT=1315461 DEFAULT CHARSET=latin1;
 
