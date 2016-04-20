@@ -441,6 +441,7 @@ CREATE TABLE gameday.feedPlays (
   player_id         VARCHAR(6),
   mph               VARCHAR(6),
   distance          VARCHAR(6),
+  launch_angle      VARCHAR(6),
   result          VARCHAR(25)
 ) ENGINE=InnoDB AUTO_INCREMENT=1315461 DEFAULT CHARSET=latin1;
 
