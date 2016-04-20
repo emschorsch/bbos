@@ -28,6 +28,15 @@ class LinescoreParser(Parser):
         if 'away_recap_link' in gameDetail: gameDetail['away_recap_link'] = GamedayConfig.mlbGamedayApplicationURL + gameDetail['away_recap_link']
         if 'photos_link' in gameDetail: gameDetail['photos_link'] = GamedayConfig.mlbGamedayApplicationURL + gameDetail['photos_link']
 
+        gameName = self.game.gameName
+        gameDetail['year_id'] = gameName[4:8]
+        gameDetail['date_id'] = gameName[9:11] + gameName[12:14]
+        local_hour = int(gameDetail['home_time'].split(":")[0])
+        # Note assumes games won't start at midnight e.g. (12:30 AM)
+        if 5 <= local_hour < 12 and gameDetail['ampm'] == 'PM':
+            gameDetail['game_time'] = 'N'
+        else:
+            gameDetail['game_time'] = 'D'
         self.game.setGameDetail(gameDetail)
 
 

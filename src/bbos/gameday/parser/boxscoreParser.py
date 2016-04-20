@@ -114,6 +114,7 @@ class BoxScoreParser(Parser):
             if pattern.match('\(H', note): pitcher['hold'] = '1'
             if pattern.match('\(BH', note): pitcher['blownhold'] = '1'
         
+            pitcher['year_id'] = self.game.gameName[4:8]
             pitchers.append(pitcher)
         
         return pitchers

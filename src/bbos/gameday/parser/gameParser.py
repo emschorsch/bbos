@@ -1,3 +1,4 @@
+
 from bbos.gameday.parser.parser import Parser
 from bbos.config.gamedayConfig import GamedayConfig
 
@@ -25,6 +26,7 @@ class GameParser(Parser):
         stadiumTag = stadiumTags[0]
 
         gameInfo['stadiumID'] = stadiumTag.getAttribute('id')
+        gameInfo['year_id'] = self.game.gameName[4:8]
 
         self.__parseStadium__(stadiumTag)
 

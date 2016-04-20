@@ -44,6 +44,8 @@ CREATE TABLE hits (
 DROP TABLE IF EXISTS atbats;
 CREATE TABLE atbats (
   gameName      varchar(38) DEFAULT NULL,
+  year_id       YEAR(4),
+  date_id       VARCHAR(4),
   `inning`      smallint(2) UNSIGNED DEFAULT NULL,
   `num`         smallint(3) UNSIGNED DEFAULT NULL,
   `b`           TINYINT(1) UNSIGNED DEFAULT NULL,
@@ -65,7 +67,8 @@ CREATE TABLE atbats (
   `eventNumber` varchar(4) DEFAULT NULL,
   halfInning    VARCHAR(6) DEFAULT NULL,
   start_tfs 	varchar(6) DEFAULT NULL,
-  `start_tfs_zulu` varchar(20) DEFAULT NULL
+  `start_tfs_zulu` varchar(20) DEFAULT NULL,
+  bat_team      VARCHAR(3),
 ) ENGINE=InnoDB AUTO_INCREMENT=368739 DEFAULT CHARSET=latin1 COMMENT='Atbat data';
 
 DROP TABLE IF EXISTS pitches;
@@ -254,6 +257,7 @@ CREATE TABLE batters (
 DROP TABLE IF EXISTS pitchers;
 CREATE TABLE pitchers (
        gameName     varchar(38) DEFAULT NULL,
+       year_id      YEAR(4),
        id           int(6) UNSIGNED DEFAULT NULL,
        `name` varchar(40) DEFAULT NULL,
        `name_display_first_last` varchar(40) DEFAULT NULL,
@@ -339,6 +343,8 @@ create unique index runnersIndex on runners (gameName, gameAtBatID, gamedayRunne
 DROP TABLE IF EXISTS gameDetail;
 CREATE TABLE gameDetail (
   gameName          varchar(38) DEFAULT NULL,
+  year_id           YEAR(4),
+  game_time         CHAR(1),
   id                varchar(30),
   venue        		VARCHAR(55),
   game_pk        	int(8),

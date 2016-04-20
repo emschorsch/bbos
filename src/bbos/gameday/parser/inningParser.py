@@ -143,6 +143,18 @@ class InningParser(Parser):
         if 'des_es' in atbat:
             atbat['des_es'] = unicodedata.normalize('NFKD', atbat['des_es']).encode('ascii', 'ignore')
 
+        gameName = self.game.gameName
+        away_team = gameName[15:18].upper()
+        home_team = gameName[-8:-5].upper()
+
+        if halfInning.upper() == "TOP":
+            atbat['bat_team'] = away_team
+        else:
+            atbat['bat_team'] = home_team
+
+        atbat['year_id'] = gameName[4:8]
+        atbat['date_id'] = gameName[9:11] + gameName[12:14]
+
         self.atbats.append(atbat)
 
     def __getPitchTagsForAtbatTag__(self, atbatTag):
