@@ -1,0 +1,20 @@
+DELETE FROM action WHERE gameName in (select gameName from Games where year_id=2016);
+DELETE FROM atbats WHERE gameName in (select gameName from Games where year_id=2016);
+DELETE FROM batters WHERE gameName in (select gameName from Games where year_id=2016);
+DELETE FROM coaches WHERE gameName in (select gameName from Games where year_id=2016);
+DELETE FROM feedPlays WHERE gameName in (select gameName from Games where year_id=2016);
+DELETE FROM gameConditions WHERE gameName in (select gameName from Games where year_id=2016);
+DELETE FROM gameDetail WHERE gameName in (select gameName from Games where year_id=2016);
+DELETE FROM hits WHERE gameName in (select gameName from Games where year_id=2016);
+DELETE FROM pitchers WHERE gameName in (select gameName from Games where year_id=2016);
+DELETE FROM pitches WHERE gameName in (select gameName from Games where year_id=2016);
+DELETE FROM playerBIOs WHERE gameName in (select gameName from Games where year_id=2016);
+DELETE FROM players WHERE gameName in (select gameName from Games where year_id=2016);
+DELETE FROM pregumboHits WHERE gameName in (select gameName from Games where year_id=2016);
+DELETE FROM runners WHERE gameName in (select gameName from Games where year_id=2016);
+DELETE FROM Stadiums WHERE gameName in (select gameName from Games where year_id=2016);
+DELETE FROM teamNames WHERE gameName in (select gameName from Games where year_id=2016);
+DELETE FROM Teams WHERE gameName in (select gameName from Games where year_id=2016);
+DELETE FROM umpires WHERE gameName in (select gameName from Games where year_id=2016);
+
+DELETE FROM Games WHERE year_id=2016;

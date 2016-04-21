@@ -147,6 +147,7 @@ CREATE TABLE Teams (
 DROP TABLE IF EXISTS Games;
 CREATE TABLE Games (
        gameName          varchar(38) DEFAULT NULL,
+       year_id           YEAR(4),
        leagueLevel       varchar(5),
        stadiumID         int(8) UNSIGNED,
        game_pk			 int(8) UNSIGNED,
@@ -344,6 +345,7 @@ DROP TABLE IF EXISTS gameDetail;
 CREATE TABLE gameDetail (
   gameName          varchar(38) DEFAULT NULL,
   year_id           YEAR(4),
+  date_id           VARCHAR(4),
   game_time         CHAR(1),
   id                varchar(30),
   venue        		VARCHAR(55),
